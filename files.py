@@ -43,6 +43,8 @@ def cacheCourseAxis():
     with open(COURSE_AXIS, 'rb') as inputFile:
         log = csv.DictReader(inputFile, delimiter='\t')
         for row in log:
+            row['element_order'] = int(row['element_order']) # lol
+
             COURSE_AXIS_ROWS.append(row)
             COURSE_AXIS_BY_ID[row['url_name']] = row
 
@@ -57,9 +59,15 @@ def cacheCourseAxis():
                     COURSE_AXIS_BY_PARENT[row['parent']] = []
                 COURSE_AXIS_BY_PARENT[row['parent']].append(row)
 
+def elementForEvent(event):
+    elementKey = event['category'] + '::' + event['name']
+    if elementKey not in COURSE_AXIS_BY_EVENT_KEY:
+        return None
+    return COURSE_AXIS_BY_EVENT_KEY[elementKey]
+
 
 EVENT_LOG_ROWS = []
-EVENT_LOG_BY_COURSE_AXIS = {}
+EVENT_LOG_BY_ELEMENT = {}
 EVENT_LOG_BY_USER = {}
 
 def cacheEventLog():
@@ -68,17 +76,19 @@ def cacheEventLog():
         for row in log:
             EVENT_LOG_ROWS.append(row)
 
-            axisKey = row['category'] + '::' + row['name']
-            if not axisKey in EVENT_LOG_BY_COURSE_AXIS:
-                EVENT_LOG_BY_COURSE_AXIS[axisKey] = []
-            EVENT_LOG_BY_COURSE_AXIS[axisKey].append(row)
+            element = elementForEvent(row)
+            if element is None:
+                continue;
+            if not element['url_name'] in EVENT_LOG_BY_ELEMENT:
+                EVENT_LOG_BY_ELEMENT[element['url_name']] = []
+            EVENT_LOG_BY_ELEMENT[element['url_name']].append(row)
 
             userId = row['user_id']
             if not userId in EVENT_LOG_BY_USER:
                 EVENT_LOG_BY_USER[userId] = []
             EVENT_LOG_BY_USER[userId].append(row)
 
-def lastEventsByUser():
+def lastEventsByUserChronological():
     lastEvents = {}
     for userId, user in USER_ROWS_BY_ID.iteritems():
         if not userId in EVENT_LOG_BY_USER:
@@ -89,11 +99,35 @@ def lastEventsByUser():
         lastEvents[userId] = events[-1]
     return lastEvents
 
+def lastEventsByUserProgression():
+    lastEvents = {}
+    for userId, user in USER_ROWS_BY_ID.iteritems():
+        if not userId in EVENT_LOG_BY_USER:
+            continue
+        events = EVENT_LOG_BY_USER[userId]
+        if len(events) == 0:
+            continue
+
+        lastEventElement = -1
+        lastEvent = None
+        for event in events:
+            axisKey = event['category'] + '::' + event['name']
+            if axisKey not in COURSE_AXIS_BY_EVENT_KEY:
+                continue # oops?
+            element = COURSE_AXIS_BY_EVENT_KEY[axisKey]
+            if lastEventElement < element['element_order']:
+                lastEventElement = element['element_order']
+                lastEvent = event
+
+        if lastEvent is not None:
+            lastEvents[userId] = lastEvent
+    return lastEvents
+
 def eventsForCourseAxis(axisId):
     if axisId not in COURSE_AXIS_BY_ID:
         return []
     axis = COURSE_AXIS_BY_ID[axisId]
     axisKey = axis['category'] + '::' + axis['name']
-    if not axisKey in EVENT_LOG_BY_COURSE_AXIS:
+    if not axisKey in EVENT_LOG_BY_ELEMENT:
         return []
-    return EVENT_LOG_BY_COURSE_AXIS[axisKey]
+    return EVENT_LOG_BY_ELEMENT[axisKey]

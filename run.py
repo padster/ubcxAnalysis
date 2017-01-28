@@ -1,0 +1,84 @@
+import matplotlib
+import matplotlib.pyplot as plt
+
+import numpy as np
+import random
+
+import files
+
+CATEGORY_MAP = {
+  'course': '#',
+  'chapter': '\\',
+  'sequential': '|',
+  'vertical': '-',
+  'html': '>',
+  'problem': '?',
+  'video': '[ ]',
+  'lti': '.',
+}
+
+SEQ_SCORES = []
+
+LAST_EVENT_USERS_BY_ELEMENT = {};
+
+# Returns map of element url_name -> list user IDs with that as their last event
+def buildLastEventsByElement():
+    byUser = files.lastEventsByUser();
+    for userId, lastEvent in byUser.iteritems():
+        axisKey = lastEvent['category'] + '::' + lastEvent['name']
+        urlName = files.COURSE_AXIS_BY_EVENT_KEY[axisKey]['url_name']
+        if urlName not in LAST_EVENT_USERS_BY_ELEMENT:
+            LAST_EVENT_USERS_BY_ELEMENT[urlName] = [userId]
+        else:
+            LAST_EVENT_USERS_BY_ELEMENT[urlName].append(userId)
+
+def printCourseTree(at, padding=''):
+    row = files.COURSE_AXIS_BY_ID[at]
+    cat = CATEGORY_MAP[row['category']] if row['category'] in CATEGORY_MAP else '~'
+
+    eventsForRow = files.eventsForCourseAxis(row['url_name'])
+    eventsByUser = {}
+    for event in eventsForRow:
+        user = event['user_id']
+        if not user in eventsByUser:
+            eventsByUser[user] = []
+        eventsByUser[user].append(event)
+    avGrade = files.averageUserGrade(eventsByUser.keys())
+    scoreSuffix = "" if avGrade < 0 else "with score %.2f" % (avGrade)
+    users = len(eventsByUser)
+
+    numLeft = 0
+    scoreLeft = 0
+    if row['url_name'] in LAST_EVENT_USERS_BY_ELEMENT:
+        leftUsers = LAST_EVENT_USERS_BY_ELEMENT[row['url_name']]
+        numLeft = len(leftUsers)
+        scoreLeft = files.averageUserGrade(leftUsers)
+
+    categoryFilter = ['#', '\\', '|']
+    if categoryFilter is None or cat in categoryFilter:
+        print ('%s (%s) %s - %d users, %d left (%.2f)') % (padding, cat, row['name'], users, numLeft, scoreLeft)
+        # print ('%s (%s) %s - %d events from %d users %s') % (padding, cat, row['name'], len(eventsForRow), users, scoreSuffix)
+
+    if cat == '|' and avGrade >= 0:
+        SEQ_SCORES.append(avGrade)
+
+    if at in files.COURSE_AXIS_BY_PARENT:
+        for child in files.COURSE_AXIS_BY_PARENT[at]:
+            printCourseTree(child['url_name'], padding + '  ')
+
+if __name__ == '__main__':
+    random.seed(4321)
+    np.random.seed(4321)
+    print "Reading event log..."
+    files.cacheEventLog()
+    print "Reading course axis..."
+    files.cacheCourseAxis()
+    print "Reading user data..."
+    files.cacheUsers()
+    print "Generating data..."
+    buildLastEventsByElement();
+
+    printCourseTree(files.ROOT_AXIS)
+
+    # plt.plot(SEQ_SCORES)
+    # plt.show()

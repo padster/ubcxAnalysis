@@ -28,8 +28,7 @@ LAST_EVENT_USERS_BY_ELEMENT = {};
 def buildLastEventUsersByElement():
     byUser = files.lastEventsByUserProgression()
     for userId, lastEvent in byUser.iteritems():
-        axisKey = lastEvent['category'] + '::' + lastEvent['name']
-        urlName = files.COURSE_AXIS_BY_EVENT_KEY[axisKey]['url_name']
+        urlName = files.getUniqueID()
         if urlName not in LAST_EVENT_USERS_BY_ELEMENT:
             LAST_EVENT_USERS_BY_ELEMENT[urlName] = set()
         LAST_EVENT_USERS_BY_ELEMENT[urlName].add(userId)

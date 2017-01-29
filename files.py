@@ -52,7 +52,6 @@ def cacheCourseAxis():
             COURSE_AXIS_BY_EVENT_KEY[eventKey] = row
 
             if row['parent'] == 'NA':
-                print row['url_name']
                 ROOT_AXIS = row['url_name']
             else:
                 if not row['parent'] in COURSE_AXIS_BY_PARENT:

@@ -77,7 +77,7 @@ def printCourseTree(at, padding=''):
         numLeft = len(leftUsers)
         scoreLeft = files.averageUserGrade(leftUsers)
 
-    categoryFilter = None # ['#', '\\', '|']
+    categoryFilter = None #['#', '\\', '|']
     if categoryFilter is None or cat in categoryFilter:
         print ('%s (%s) %s - %d users, %d left (%.2f)') % (padding, cat, row['name'], users, numLeft, scoreLeft)
         # print ('%s (%s) %s - %d users, %d left (%.2f)') % (padding, cat, row['name'], users, numLeft, scoreLeft)

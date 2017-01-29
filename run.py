@@ -1,5 +1,5 @@
-import matplotlib
-import matplotlib.pyplot as plt
+#import matplotlib
+#import matplotlib.pyplot as plt
 
 import numpy as np
 import random
@@ -25,8 +25,7 @@ def buildLastEventsByElement():
     # byUser = files.lastEventsByUserChronological();
     byUser = files.lastEventsByUserProgression()
     for userId, lastEvent in byUser.iteritems():
-        axisKey = lastEvent['category'] + '::' + lastEvent['name']
-        urlName = files.COURSE_AXIS_BY_EVENT_KEY[axisKey]['url_name']
+        urlName = files.getUniqueID(lastEvent)
         if urlName not in LAST_EVENT_USERS_BY_ELEMENT:
             LAST_EVENT_USERS_BY_ELEMENT[urlName] = [userId]
         else:

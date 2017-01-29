@@ -49,7 +49,10 @@ def cacheCourseAxis():
             COURSE_AXIS_BY_ID[row['url_name']] = row
 
             eventKey = row['category'] + '::' + row['name']
-            COURSE_AXIS_BY_EVENT_KEY[eventKey] = row
+
+            if not eventKey in COURSE_AXIS_BY_EVENT_KEY:
+                COURSE_AXIS_BY_EVENT_KEY[eventKey] = []
+            COURSE_AXIS_BY_EVENT_KEY[eventKey].append(row)
 
             if row['parent'] == 'NA':
                 print row['url_name']
@@ -59,16 +62,36 @@ def cacheCourseAxis():
                     COURSE_AXIS_BY_PARENT[row['parent']] = []
                 COURSE_AXIS_BY_PARENT[row['parent']].append(row)
 
+
+#replace with searching course_axis_by_ID with getuniqueID(event)
 def elementForEvent(event):
-    elementKey = event['category'] + '::' + event['name']
-    if elementKey not in COURSE_AXIS_BY_EVENT_KEY:
+    elementKey = getUniqueID(event)
+    if elementKey not in COURSE_AXIS_BY_ID:
         return None
-    return COURSE_AXIS_BY_EVENT_KEY[elementKey]
+    return COURSE_AXIS_BY_ID[elementKey]
+
+
+def getUniqueID(event):
+    axisKey = event['category'] + '::' + event['name']
+    matchingIDs = []
+
+    if not axisKey in COURSE_AXIS_BY_EVENT_KEY:
+	    return None
+
+    for element in COURSE_AXIS_BY_EVENT_KEY[axisKey]:
+        matchingIDs.append(element['url_name'])
+
+    for id in matchingIDs:
+        if id in event['event']:
+           return id
+
+
 
 
 EVENT_LOG_ROWS = []
 EVENT_LOG_BY_ELEMENT = {}
 EVENT_LOG_BY_USER = {}
+EVENT_LOG_BY_ID = {}
 
 def cacheEventLog():
     with open(CLIMATE_LOG, 'rb') as inputFile:
@@ -110,11 +133,13 @@ def lastEventsByUserProgression():
 
         lastEventElement = -1
         lastEvent = None
+
+        #replace by axisKey = uniqueID(event), if axisKey not in COURSE_AXIS_BY_ID
         for event in events:
-            axisKey = event['category'] + '::' + event['name']
-            if axisKey not in COURSE_AXIS_BY_EVENT_KEY:
+            axisKey = getUniqueID(event)
+            if axisKey not in COURSE_AXIS_BY_ID:
                 continue # oops?
-            element = COURSE_AXIS_BY_EVENT_KEY[axisKey]
+            element = COURSE_AXIS_BY_ID[axisKey]
             if lastEventElement < element['element_order']:
                 lastEventElement = element['element_order']
                 lastEvent = event
@@ -123,11 +148,13 @@ def lastEventsByUserProgression():
             lastEvents[userId] = lastEvent
     return lastEvents
 
+
+#replace by changing axisKey to axis['urlName']
 def eventsForCourseAxis(axisId):
     if axisId not in COURSE_AXIS_BY_ID:
         return []
     axis = COURSE_AXIS_BY_ID[axisId]
-    axisKey = axis['category'] + '::' + axis['name']
+    axisKey = axis['url_name']
     if not axisKey in EVENT_LOG_BY_ELEMENT:
         return []
     return EVENT_LOG_BY_ELEMENT[axisKey]

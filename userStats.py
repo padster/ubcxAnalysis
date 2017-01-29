@@ -28,7 +28,7 @@ LAST_EVENT_USERS_BY_ELEMENT = {};
 def buildLastEventUsersByElement():
     byUser = files.lastEventsByUserProgression()
     for userId, lastEvent in byUser.iteritems():
-        urlName = files.getUniqueID()
+        urlName = files.getUniqueID(lastEvent)
         if urlName not in LAST_EVENT_USERS_BY_ELEMENT:
             LAST_EVENT_USERS_BY_ELEMENT[urlName] = set()
         LAST_EVENT_USERS_BY_ELEMENT[urlName].add(userId)

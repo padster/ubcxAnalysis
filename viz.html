@@ -1,0 +1,109 @@
+<html>
+<head>
+  <script src="http://visjs.org/dist/vis.js"></script>
+  <script src="./datadump.js"></script>
+  <link href="http://visjs.org/dist/vis-network.min.css" rel="stylesheet" type="text/css"></link>
+  <style type="text/css">
+    #mynetwork {
+      width: 100%;
+      height: 100%;
+      border: 1px solid lightgray;
+    }
+  </style>
+</head>
+<body>
+  <div id="mynetwork"></div>
+  <script type="text/javascript">
+var collapsedNodes = {};
+
+function expandCollapse(nodeID) {
+  if (collapsedNodes[nodeID] == true) {
+    delete collapsedNodes[nodeID];
+  } else {
+    collapsedNodes[nodeID] = true;
+  }
+}
+
+function draw() {
+  var options = {
+    layout: {
+      hierarchical: {
+          direction: "UD"
+      }
+    },
+    nodes: {
+      shape: 'dot',
+      font: {
+        background: 'white',
+        face:'courier',
+        strokeWidth: 6,
+        size: 24,
+      },
+      borderWidth: 2,
+    },
+    edges: {
+      color: 'rgb(50, 50, 50)',
+    },
+    // physics: {
+      // enabled: false,
+    // },
+  };
+
+  var removedNodes = {};
+  var parent = {};
+  var edgeList = [];
+  for (var i in EDGELIST) {
+    var edge = EDGELIST[i];
+    parent[edge.to] = edge.from;
+    if (removedNodes[edge.from] || collapsedNodes[edge.from]) {
+      removedNodes[edge.to] = true;
+    } else {
+      edgeList.push(edge)
+    }
+  }
+
+  var nodeList = [];
+  for (var i in NODELIST) {
+    var node = NODELIST[i];
+    if (!removedNodes[node.id]) {
+      nodeList.push(node);
+    }
+  }
+
+  var nodes = new vis.DataSet(nodeList);
+  var edges = new vis.DataSet(edgeList);
+
+  // create a network
+  var container = document.getElementById('mynetwork');
+  var data = {
+    nodes: nodes,
+    edges: edges
+  };
+
+  var network = new vis.Network(container, data, options);
+  network.on("doubleClick", function (params) {
+    expandCollapse(params.nodes[0]);
+    draw();
+    console.log(JSON.stringify(params))
+  });
+}
+
+for (var i in NODELIST) {
+  if (!NODELIST[i].startShown) {
+    collapsedNodes[NODELIST[i].id] = true;
+  }
+  var att = NODELIST[i].attrition;
+  var r = (130 - 100 * att) | 0;
+  var g = r;
+  var b = r - 20;
+  r += 125;
+  NODELIST[i].color = {
+    background: 'rgb(' + r + ', ' + g + ', ' + b + ')',
+    border: 'black',
+  };
+}
+
+draw();
+  </script>
+</body>
+</html>

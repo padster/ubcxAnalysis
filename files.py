@@ -86,12 +86,23 @@ def validElement(element, excludeSurveys):
 
 def cacheCourseAxis(excludeSurveys):
     global ROOT_AXIS
+    removedParent = None
     with open(COURSE_AXIS, 'rb') as inputFile:
         log = csv.DictReader(inputFile, delimiter='\t')
         for row in log:
             row['element_order'] = int(row['element_order']) # lol
             if not validElement(row, excludeSurveys):
                 continue
+
+            # HACK - move Assignment 1 to just after Quiz 3
+            assignmentParent = '73432a1c4cf3458a9b80cbcc3edb226c'
+            if row['url_name'] == assignmentParent:
+                removedParent = row['parent']
+                continue;
+            if row['parent'] == assignmentParent:
+                row['parent'] = removedParent
+            if row['element_order'] >= 470 and row['element_order'] <= 494:
+                row['element_order'] = 312.0 + row['element_order'] / 1000.0
 
             COURSE_AXIS_ROWS.append(row)
             COURSE_AXIS_BY_ID[row['url_name']] = row
@@ -109,6 +120,11 @@ def cacheCourseAxis(excludeSurveys):
                     COURSE_AXIS_BY_PARENT[row['parent']] = []
                 COURSE_AXIS_BY_PARENT[row['parent']].append(row)
 
+    # Re-order things back in the right spot:
+    COURSE_AXIS_ROWS.sort(key=lambda e: e['element_order'])
+    for parent in COURSE_AXIS_BY_PARENT.keys():
+        COURSE_AXIS_BY_PARENT[parent].sort(key=lambda e: e['element_order'])
+
 
 #replace with searching course_axis_by_ID with getuniqueID(event)
 def elementForEvent(event):
@@ -124,6 +140,9 @@ def getUniqueID(event):
 
     if not axisKey in COURSE_AXIS_BY_EVENT_KEY:
 	    return None
+
+    if len(COURSE_AXIS_BY_EVENT_KEY[axisKey]) == 1:
+        return COURSE_AXIS_BY_EVENT_KEY[axisKey][0]['url_name']
 
     for element in COURSE_AXIS_BY_EVENT_KEY[axisKey]:
         matchingIDs.append(element['url_name'])

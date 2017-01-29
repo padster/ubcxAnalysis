@@ -175,7 +175,7 @@ if __name__ == '__main__':
     random.seed(4321)
     np.random.seed(4321)
     print "Reading course axis..."
-    files.cacheCourseAxis()
+    files.cacheCourseAxis(True)
     print "Reading event log..."
     files.cacheEventLog()
 

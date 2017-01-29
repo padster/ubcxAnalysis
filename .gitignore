@@ -1,4 +1,4 @@
-files.pyc
+*.pyc
 data/
 venv
 *.pyc

@@ -5,7 +5,43 @@ import numpy as np
 import random
 
 import files
+import userStats
 
+EXCLUDE_SURVEYS = True
+
+SEQUENTIAL_USERS = []
+
+# Add logic here to determine which users we want to include or exclude:
+def filterUser(user):
+    if user['isstaff'] == 'TRUE':
+
+        return False
+    # preMOOC = user['entryTest']['In how many MOOCs have you participated at least partially?']
+    # return preMOOC in ['1-2.', '3-7.', '8 or more.']
+
+    # return 'prepost' in user
+    # return 'exitTest' in user
+    # return user['nforum_posts'] != "NA"
+    # return user['grade'] > 0.5
+    # return user['education'] == 'high_school'
+    return True
+
+def filterUsers(users):
+    return {userID for userID in users if userID in files.USER_ROWS_BY_ID and filterUser(files.USER_ROWS_BY_ID[userID])}
+
+# Generate visual data for single element
+def printElement(element, cat, stayUsers, leaveUsers, padding):
+    eID = element['url_name']
+    userCount = len(stayUsers) + len(leaveUsers)
+    leaveCount = len(leaveUsers)
+    leaveGrade = files.averageUserGrade(leaveUsers)
+    if cat == '|':
+        SEQUENTIAL_USERS.append(userCount)
+    # if leaveCount > 0:
+    print ('%s (%s) %s - %d users, %d left (%.2f)') % (padding, cat, element['name'], userCount, leaveCount, leaveGrade)
+
+
+# Useful representations of category types
 CATEGORY_MAP = {
   'course': '#',
   'chapter': '\\',
@@ -17,94 +53,42 @@ CATEGORY_MAP = {
   'lti': '.',
 }
 
-SEQ_SCORES = []
+# Generate visual data for entire heirarchy
+def printCourseTree(eID, padding=''):
+    row = files.COURSE_AXIS_BY_ID[eID]
+    cat = CATEGORY_MAP[row['category']] if row['category'] in CATEGORY_MAP else '~'
 
-# Map of element url_name -> list user IDs with that as their last event
-LAST_EVENT_USERS_BY_ELEMENT = {};
-def buildLastEventsByElement():
-    # byUser = files.lastEventsByUserChronological();
-    byUser = files.lastEventsByUserProgression()
-    for userId, lastEvent in byUser.iteritems():
-        urlName = files.getUniqueID(lastEvent)
-        if urlName not in LAST_EVENT_USERS_BY_ELEMENT:
-            LAST_EVENT_USERS_BY_ELEMENT[urlName] = [userId]
-        else:
-            LAST_EVENT_USERS_BY_ELEMENT[urlName].append(userId)
+    categoryFilter = None #['#', '\\', '|']
+    if categoryFilter is None or cat in categoryFilter:
+        allUsers = filterUsers(userStats.allUsersForElement(eID))
+        leaveUsers = filterUsers(userStats.leaveUsersForElement(eID))
+        stayUsers = allUsers.difference(leaveUsers)
+        printElement(row, cat, stayUsers, leaveUsers, padding)
 
-
-# Map of element to set of user ids who did it
-USERS_BY_ELEMENT = {}
-# Map of element to set of user ids who did it *or its children*
-USERS_BY_ELEMENT_FULL = {}
-def buildUsersForElements():
-    for element in files.COURSE_AXIS_ROWS:
-        eID = element['url_name']
-        USERS_BY_ELEMENT[eID] = set()
-        if eID in files.EVENT_LOG_BY_ELEMENT:
-            for event in files.EVENT_LOG_BY_ELEMENT[eID]:
-                USERS_BY_ELEMENT[eID].add(event['user_id'])
-
-def buildUsersForElementsAndChildren(eID):
-    USERS_BY_ELEMENT_FULL[eID] = USERS_BY_ELEMENT[eID]
     if eID in files.COURSE_AXIS_BY_PARENT:
         for child in files.COURSE_AXIS_BY_PARENT[eID]:
-            childId = child['url_name']
-            childUsers = buildUsersForElementsAndChildren(childId)
-            USERS_BY_ELEMENT_FULL[eID] = USERS_BY_ELEMENT_FULL[eID].union(childUsers)
-    return USERS_BY_ELEMENT_FULL[eID]
-
-def printCourseTree(at, padding=''):
-    row = files.COURSE_AXIS_BY_ID[at]
-    cat = CATEGORY_MAP[row['category']] if row['category'] in CATEGORY_MAP else '~'
-    eID = row['url_name']
-
-    eventsForRow = files.eventsForCourseAxis(eID)
-    eventsByUser = {}
-    for event in eventsForRow:
-        user = event['user_id']
-        if not user in eventsByUser:
-            eventsByUser[user] = []
-        eventsByUser[user].append(event)
-    avGrade = files.averageUserGrade(eventsByUser.keys())
-    scoreSuffix = "" if avGrade < 0 else "with score %.2f" % (avGrade)
-    users = len(USERS_BY_ELEMENT_FULL[eID]) or 0
-
-    numLeft = 0
-    scoreLeft = 0
-    if row['url_name'] in LAST_EVENT_USERS_BY_ELEMENT:
-        leftUsers = LAST_EVENT_USERS_BY_ELEMENT[row['url_name']]
-        numLeft = len(leftUsers)
-        scoreLeft = files.averageUserGrade(leftUsers)
-
-    categoryFilter = None # ['#', '\\', '|']
-    if categoryFilter is None or cat in categoryFilter:
-        print ('%s (%s) %s - %d users, %d left (%.2f)') % (padding, cat, row['name'], users, numLeft, scoreLeft)
-        # print ('%s (%s) %s - %d users, %d left (%.2f)') % (padding, cat, row['name'], users, numLeft, scoreLeft)
-        # print ('%s (%s) %s - %d events from %d users %s') % (padding, cat, row['name'], len(eventsForRow), users, scoreSuffix)
-
-    if cat == '|' and avGrade >= 0:
-        SEQ_SCORES.append(avGrade)
-
-    if at in files.COURSE_AXIS_BY_PARENT:
-        for child in files.COURSE_AXIS_BY_PARENT[at]:
             printCourseTree(child['url_name'], padding + '  ')
 
+# Actual code run...
 if __name__ == '__main__':
     random.seed(4321)
     np.random.seed(4321)
     print "Reading course axis..."
-    files.cacheCourseAxis()
+    files.cacheCourseAxis(EXCLUDE_SURVEYS)
     print "Reading user data..."
     files.cacheUsers()
+    files.addEntryExitDataToUsers()
+
     # NEEDS TO GO AFTER COURSE AXIS PARSE
     print "Reading event log..."
     files.cacheEventLog()
     print "Generating data..."
-    buildLastEventsByElement();
-    buildUsersForElements();
-    buildUsersForElementsAndChildren(files.ROOT_AXIS)
-
+    userStats.buildUsersForElements(files.ROOT_AXIS);
+    userStats.buildLastEventUsersByElement();
+    # and...visualize!
     printCourseTree(files.ROOT_AXIS)
 
-    # plt.plot(SEQ_SCORES)
-    # plt.show()
+    if len(SEQUENTIAL_USERS) > 0:
+        plt.get_current_fig_manager().window.showMaximized()
+        plt.plot(SEQUENTIAL_USERS)
+        plt.show()

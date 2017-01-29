@@ -7,13 +7,24 @@ import random
 import files
 import userStats
 
+EXCLUDE_SURVEYS = True
+
+SEQUENTIAL_USERS = []
+
 # Add logic here to determine which users we want to include or exclude:
 def filterUser(user):
     if user['isstaff'] == 'TRUE':
+
         return False
-    return user['grade'] > 0.5
+    # preMOOC = user['entryTest']['In how many MOOCs have you participated at least partially?']
+    # return preMOOC in ['1-2.', '3-7.', '8 or more.']
+
+    # return 'prepost' in user
+    # return 'exitTest' in user
+    # return user['nforum_posts'] != "NA"
+    # return user['grade'] > 0.5
     # return user['education'] == 'high_school'
-    #return True
+    return True
 
 def filterUsers(users):
     return {userID for userID in users if userID in files.USER_ROWS_BY_ID and filterUser(files.USER_ROWS_BY_ID[userID])}
@@ -24,8 +35,11 @@ def printElement(element, cat, stayUsers, leaveUsers, padding):
     userCount = len(stayUsers) + len(leaveUsers)
     leaveCount = len(leaveUsers)
     leaveGrade = files.averageUserGrade(leaveUsers)
-    if leaveCount > 0:
-        print ('%s (%s) %s - %d users, %d left (%.2f)') % (padding, cat, element['name'], userCount, leaveCount, leaveGrade)
+    if cat == '|':
+        SEQUENTIAL_USERS.append(userCount)
+    # if leaveCount > 0:
+    print ('%s (%s) %s - %d users, %d left (%.2f)') % (padding, cat, element['name'], userCount, leaveCount, leaveGrade)
+
 
 # Useful representations of category types
 CATEGORY_MAP = {
@@ -60,9 +74,11 @@ if __name__ == '__main__':
     random.seed(4321)
     np.random.seed(4321)
     print "Reading course axis..."
-    files.cacheCourseAxis()
+    files.cacheCourseAxis(EXCLUDE_SURVEYS)
     print "Reading user data..."
     files.cacheUsers()
+    files.addEntryExitDataToUsers()
+
     # NEEDS TO GO AFTER COURSE AXIS PARSE
     print "Reading event log..."
     files.cacheEventLog()
@@ -71,3 +87,8 @@ if __name__ == '__main__':
     userStats.buildLastEventUsersByElement();
     # and...visualize!
     printCourseTree(files.ROOT_AXIS)
+
+    if len(SEQUENTIAL_USERS) > 0:
+        plt.get_current_fig_manager().window.showMaximized()
+        plt.plot(SEQUENTIAL_USERS)
+        plt.show()

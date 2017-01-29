@@ -14,6 +14,8 @@ def cacheUsers():
     with open(USER_DATA, 'rb') as inputFile:
         log = csv.DictReader(inputFile, delimiter='\t')
         for row in log:
+            row['grade'] = None if row['grade'] == 'NA' else float(row['grade'])
+
             USER_ROWS.append(row)
             USER_ROWS_BY_ID[row['user_id']] = row
 
@@ -23,8 +25,6 @@ def averageUserGrade(users):
         if user not in USER_ROWS_BY_ID:
             continue
         userRow = USER_ROWS_BY_ID[user]
-        if userRow['isstaff'] == 'TRUE':
-            continue
         if userRow['grade'] == 'NA':
             continue
         scores.append(float(userRow['grade']))
@@ -38,12 +38,18 @@ COURSE_AXIS_BY_PARENT = {}
 COURSE_AXIS_BY_EVENT_KEY = {}
 ROOT_AXIS = None
 
+def validElement(element):
+    # Filter out 'Suggested Readings-OLD' and children
+    return element['element_order'] <= 550
+
 def cacheCourseAxis():
     global ROOT_AXIS
     with open(COURSE_AXIS, 'rb') as inputFile:
         log = csv.DictReader(inputFile, delimiter='\t')
         for row in log:
             row['element_order'] = int(row['element_order']) # lol
+            if not validElement(row):
+                continue
 
             COURSE_AXIS_ROWS.append(row)
             COURSE_AXIS_BY_ID[row['url_name']] = row

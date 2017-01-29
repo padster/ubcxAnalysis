@@ -11,7 +11,8 @@ import userStats
 def filterUser(user):
     if user['isstaff'] == 'TRUE':
         return False
-    return user['education'] == 'high_school'
+    return user['grade'] > 0.5
+    # return user['education'] == 'high_school'
     #return True
 
 def filterUsers(users):
